@@ -1,22 +1,12 @@
 ﻿#include "SHA256.h"
 
-std::string SHA256::compute_hash(std::string value)
+void SHA256::compute_hash(std::string value, unsigned long H[])
 {
 	std::vector<unsigned long> Block;
 	for (int i = 0; i < 512; i += 32)
 	{
 		Block.push_back(std::strtoul(value.substr(i, 32).c_str(), NULL, 2));
 	} //initialize the first 16 words as a unsigned long instead of the string it is
-
-	unsigned long H[8];
-	H[0] = 0x6a09e667;
-	H[1] = 0xbb67ae85;
-	H[2] = 0x3c6ef372;
-	H[3] = 0xa54ff53a;
-	H[4] = 0x510e527f;
-	H[5] = 0x9b05688c;
-	H[6] = 0x1f83d9ab;
-	H[7] = 0x5be0cd19;
 
 	unsigned long W[64];
 
@@ -64,13 +54,6 @@ std::string SHA256::compute_hash(std::string value)
 	H[5] = (H[5] + f) & 0xFFFFFFFF;
 	H[6] = (H[6] + g) & 0xFFFFFFFF;
 	H[7] = (H[7] + h) & 0xFFFFFFFF;
-
-	std::string temp = "";
-	for (int i = 0; i < 8; i++) // concatenate all values
-	{
-		temp.append(hex(H[i]));
-	}
-	return temp;
 }
 
 /*
@@ -84,22 +67,41 @@ std::string SHA256::hex(unsigned long inp)
 	return ss.str();
 }
 
-std::string SHA256::pad512bits(std::string value)
+std::string SHA256::pad512bits(std::string value, bool isFinalBlock, int ExtraLen) //mul value for multiple messages
 {
-	int original_length = value.size();  // length in bytes
-	int bit_length = original_length * 8;  // length in bits
+	int bit_length = value.size();  // length in bytes
 	int padding_length = 447 - bit_length;  // how many 0's to add
 
-	std::string binary_message = convertBinary(value);
-	binary_message += "1";
+	if (!isFinalBlock)
+	{
+		if (512 - bit_length)
+		{
+			if (!is1)
+			{
+				value += "1";
+				is1 = true;
+			}
+			value += std::string(511 - bit_length, '0');
+		}
+		else
+			value += std::string(512 - bit_length, '0');
+	}
 
-	binary_message += std::string(padding_length, '0');
 
-	std::string length_bits = std::bitset<64>(bit_length).to_string(); //transfer bit length to binary
-	binary_message += length_bits;
+	if (isFinalBlock) {
+		std::string length_bits = std::bitset<64>(bit_length + ExtraLen).to_string(); //transfer bit length to binary
 
-	std::cout << binary_message << std::endl;
-	return binary_message;
+		if (!is1)
+		{
+			value += "1";
+			is1 = true;
+		}
+		value += std::string(padding_length, '0');
+
+		value += length_bits;
+	}
+	
+	return value;
 }
 
 
@@ -116,8 +118,60 @@ std::string SHA256::convertBinary(std::string value)
 	return temp;
 }
 
+std::string SHA256::calcHash(unsigned long H[])
+{
+	std::string temp = "";
+	for (int i = 0; i < 8; i++) // concatenate all values
+	{
+		temp.append(hex(H[i]));
+	}
+	return temp;
+}
+
 std::string SHA256::digest(std::string value)
 {
-	value = pad512bits(value);
-	return compute_hash(value);;
+	unsigned long H[8];
+	H[0] = 0x6a09e667; 
+	H[1] = 0xbb67ae85; 
+	H[2] = 0x3c6ef372; 
+	H[3] = 0xa54ff53a;
+	H[4] = 0x510e527f;
+	H[5] = 0x9b05688c;
+	H[6] = 0x1f83d9ab;
+	H[7] = 0x5be0cd19;
+
+	if (value.size() > 55)
+	{
+		int i = 0;
+		std::string pad;
+		bool go = true;
+		std::string bin;
+		bin = convertBinary(value);
+		std::string temp;
+		//always check if over 447, if yes. run pad and update H array
+		//if not, run as last block the remainder
+		do {
+			temp = bin.substr(i, 512);
+			if (temp.size() > 447)
+			{
+				i += temp.size();
+				pad = pad512bits(temp, false, 0); //if its over 447 bits, take the first 512
+				compute_hash(pad, H);
+			}
+			else
+			{
+				pad = pad512bits(temp, true, i);
+				compute_hash(pad, H);
+				go = false;
+			}
+			std::cout << pad << std::endl;
+		} while (go);
+
+		return calcHash(H);
+
+	}
+	value = convertBinary(value);
+	value = pad512bits(value, true, 0);
+	compute_hash(value, H);
+	return calcHash(H);
 }

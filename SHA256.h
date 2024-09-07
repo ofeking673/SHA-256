@@ -41,11 +41,13 @@ public:
 		0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 	}; //first 64 prime numbers in the root of 3
 
-	std::string compute_hash(std::string value);
+	void compute_hash(std::string value, unsigned long H[]);
 	std::string hex(unsigned long inp);
-	std::string pad512bits(std::string value);
+	std::string pad512bits(std::string value, bool isFinalBlock, int ExtraLen);
 	std::string convertBinary(std::string value);
-
+	std::string calcHash(unsigned long H[]);
 	std::string digest(std::string value);
+
+	int is1 = false;
 };
 
