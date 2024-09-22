@@ -1,5 +1,7 @@
 # Basic SHA-256 implementation
 
+This hashing algorithm will be used for implementing my blockchain based crypto coin
+
 
 - initialize basic function
 * ROTR = rotate right
