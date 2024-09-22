@@ -3,65 +3,93 @@
 This hashing algorithm will be used for implementing my blockchain based crypto coin
 
 
-- initialize basic function
-* ROTR = rotate right
-* small sigma0 = rotr(x,7) ^ rotr(x,18) ^ shr(x, 3)
-* small sigma1 = rotr(x,17) ^ rotr(x,19) ^ shr(x,10)
-* ch = choice(x,y,z) = (x&y) ^ (!x&z) 
-* maj = majority(x,y,z) = (x&y) ^ (x&z) ^ (y&z)
-* big sigma0 = rotr(x,2) ^ rotr(x,13) ^ rotr(x, 22)
-* big sigma1 = rotr(x,6) ^ rotr(x,11) ^ rotr(x, 25)
+#### Initialize basic functions:
+* Rotate right(word, amount) (ROTR) = (((word) >> (amount)) | ((word) << (32-(amount))))
+* small sigma0 (SSIG0) = rotr(x,7) ^ rotr(x,18) ^ shr(x, 3)
+* small sigma1 (SSIG1) = rotr(x,17) ^ rotr(x,19) ^ shr(x,10)
+* choice(x,y,z) (CH) = (x&y) ^ (!x&z) 
+* majority(x,y,z) (MAJ) = (x&y) ^ (x&z) ^ (y&z)
+* big sigma0 (SSIG0) = rotr(x,2) ^ rotr(x,13) ^ rotr(x, 22)
+* big sigma1 (SSIG1) = rotr(x,6) ^ rotr(x,11) ^ rotr(x, 25)
 
 
-initialize first 64 cube roots of primary numbers into K array
-initial hash values H0-H7 -> root of first 8 primary numbers
-if message > 55 chars -> change h0-h7 value to be block 1 hash (64 bytes/8)
+#### Initialization:
+1. Initialize the first 64 cube roots of prime numbers into the `K` array.
+2. Set initial hash values (`H0` to `H7`) to the square roots of the first 8 prime numbers.
+3. If the message length exceeds 55 characters, change the values of `H0`-`H7` to be the hash of the first block (64 bytes/8).
 
+#### W Array:
+- The first 16 values, `W[0]` to `W[15]`, are the message itself split into 8-byte values.
+- For each subsequent value, compute using the following function:
+  \[
+  W[i] = SSIG1(W[i-2]) + W[i-7] + SSIG0(W[i-15]) + W[i-16]
+  \]
+- After every computation, limit the value to 32 bits:
+  \[
+  W[i] = W[i] \& 0xFFFFFFFF
+  \]
 
-W array:
+#### Temporary Values for Cycling A-H:
+1. For `K[t]`, reference the start of the file.
+2. Calculate:
+   \[
+   \temp1 = h + BSIG1(e) + CH(e, f, g) + K[t] + W[t]
+   \]
+   \[
+   \temp2 = BSIG0(a) + MAJ(a, b, c)
+   \]
+3. Update the cycling values:
+   [h = g]
+   [g = f]
+   [f = e]
+   [e = (d + temp1) \& 0xFFFFFFFF]
+   [d = c]
+   [c = b]
+   [b = a]
+   [a = (temp1 + temp2) \& 0xFFFFFFFF]
 
-first 16 values W[0] - W[15] are the hash itself split into 8 byte values.
+#### Update H Variables:
+After the cycling step, update the hash variables:
+\[
+H0 = H0 + a
+\]
 
-for every next value, the values are computed with this function:
+\[
+H1 = H1 + b
+\]
 
-w[i] = ssigma1(W[i-2]) + W[i-7] + ssigma0(W[i-15] + W[i-16]
+\[
+H2 = H2 + c
+\]
 
-after every computation limit to 32 bits
-W[i] = W[i] & 0xFFFFFFFF
+\[
+H3 = H3 + d
+\]
 
-calculate temporary values for cycling a-h values:
-for K reference start of file
-temp1 = h + bsig1(E) + CH(e,f,g) + K[t] + W[t]
-temp2 = bsig0(A) + MAJ(a,b,c)
+\[
+H4 = H4 + e
+\]
 
-cycling:
-h = g
-g = f
-f = e
-e = (d+temp1) & 0xFFFFFFFF (limit to 32 bits)
-d = c
-c = b
-b = a
-a =(temp1 + temp2) & 0xFFFFFFFF ( limit to 32 bits)
+\[
+H5 = H5 + f
+\]
 
-now add all values to the H variables
+\[
+H6 = H6 + g
+\]
 
-h0 = (h0 + a) & 0xFFFFFFFF
-h1 = (h1 + b) & 0xFFFFFFFF
-h2 = (h2 + c) & 0xFFFFFFFF
-h3 = (h3 + d) & 0xFFFFFFFF
-h4 = (h4 + e) & 0xFFFFFFFF
-h5 = (h5 + f) & 0xFFFFFFFF
-h6 = (h6 + g) & 0xFFFFFFFF
-h7 = (h7 + h) & 0xFFFFFFFF
+\[
+H7 = H7 + h
+\]
 
+#### Final Hash:
+The final hash is the concatenation of the hexadecimal values of `H0` to `H7`:
 
-finished value is hex of all h's concatenated
+hash = hex(H0) + hex(H1) + hex(H2) + hex(H3) + hex(H4) + hex(H5) + hex(H6) + hex(H7)
 
-return hex(h0) + hex(h1) + hex(h2) + hex(h3) + hex(h4) + hex(h5) + hex(h6) + hex(h7)
+Return this concatenated hexadecimal string as the hash.
 
+---
 
-
-# Multi-block hashing
-For multiblock hashing you use initial hash values equal to the last block hash values
-*reference the H values for initial hash values*
+### Multi-Block Hashing:
+For multi-block hashing, use the hash values from the previous block as the initial hash values for the next block. Specifically, reference the `H` values to initialize the hash for subsequent blocks.
